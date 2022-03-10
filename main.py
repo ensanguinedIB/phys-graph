@@ -10,8 +10,6 @@ def round_sig(x, figures):
     if x == 0:
         return 0
     
-    # sign = True if x < 0 else False
-
     magnitude_diff = ceil(log10(abs(x)))
     power = figures - magnitude_diff
 
@@ -28,17 +26,41 @@ def round_sig(x, figures):
 
 
 class Graph:
-    def __init__(self, x, y, x_err=None, y_err=None, accuracy=3,
+    def __init__(self, x, y, x_err_min=None, y_err_min=None, accuracy=3,
                  title="Graph", x_label="Independent variable", y_label="Dependent variable",
-                 force_origin=True):
+                 force_origin=True, worst_fit=True):
         # Get graph from matplotlib
         self.fig, self.ax = plt.subplots()
 
-        # Data variables
-        self.x = np.array(x)
-        self.y = np.array(y)
-        self.x_err = x_err
-        self.y_err = y_err
+        x = np.array(x)
+        y = np.array(y)
+
+        # Interpret raw data or use provided values
+        if len(x.shape) > 1:
+            self.x = np.array(list(map(lambda n: sum(n) / len(n), x)))
+            range_err = np.array(list(map(lambda n: (max(n) - min(n)) / 2, x)))
+
+            if x_err_min:
+                self.x_err = np.maximum(range_err, x_err_min)
+            else:
+                self.x_err = range_err
+        else:
+            self.x = x
+            self.x_err = x_err_min
+
+        print(y.shape, len(y.shape))
+
+        if len(y.shape) > 1:
+            self.y = np.array(list(map(lambda n: sum(n) / len(n), y)))
+            range_err = np.array(list(map(lambda n: (max(n) - min(n)) / 2, y)))
+            
+            if y_err_min:
+                self.y_err = np.maximum(range_err, y_err_min)
+            else:
+                self.y_err = range_err
+        else:
+            self.y = y
+            self.y_err = y_err_min
 
         # TODO: Infer accuracy from data
         self.accuracy = accuracy
@@ -50,6 +72,7 @@ class Graph:
 
         # Flags
         self.force_origin = force_origin
+        self.worst_fit = worst_fit
     
     def __add_gridlines(self):
         # Ticks must be shown on axes to show minor gridlines
@@ -70,12 +93,13 @@ class Graph:
     
     def __show_origin(self):
         # Find the mself.aximum points on the graph
-        if self.x_err:
+        if self.x_err is not None:
             x_max = max(self.x + self.x_err)
         else:
             x_max = max(self.x)
         
-        if self.y_err:
+        if self.y_err is not None:
+            print(self.y, self.y_err, self.y + self.y_err)
             y_max = max(self.y + self.y_err)
         else:
             y_max = max(self.y)
@@ -110,7 +134,9 @@ class Graph:
 
         # Plot lines
         self.ax.plot(endpoints, (m_b * endpoints) + c_b, color="black", linewidth=0.6, label=best_label)
-        self.ax.plot(endpoints, (m_w * endpoints) + c_w, color="red", linewidth=0.6, label=worst_label)
+
+        if self.worst_fit:
+            self.ax.plot(endpoints, (m_w * endpoints) + c_w, color="red", linewidth=0.6, label=worst_label)
 
     def show(self):
         if self.force_origin:
@@ -127,8 +153,7 @@ class Graph:
 
 
 def main():
-    Graph([1, 0.9, 0.8, 0.7, 0.6, 0.5], [3.0, 2.5, 2.5, 2.3, 1.8, 1.5], y_err=0.3,
-          title="Young's double slit data", x_label="Displacement / m", y_label="Fringe spacing / mm").show()
+    pass
 
 
 if __name__ == "__main__":
